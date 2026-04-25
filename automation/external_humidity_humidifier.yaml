@@ -1,0 +1,94 @@
+blueprint:
+  name: Humidifier controlled by external humidity sensor
+  description: >
+    Turns a humidifier on and off using an external humidity sensor with
+    hysteresis. The tank sensor is intentionally not checked.
+  domain: automation
+  input:
+    humidity_sensor:
+      name: External humidity sensor
+      selector:
+        entity:
+          domain: sensor
+          device_class: humidity
+    humidifier_entity:
+      name: Humidifier
+      selector:
+        entity:
+          domain: humidifier
+    low_humidity:
+      name: Turn on below
+      default: 40
+      selector:
+        number:
+          min: 1
+          max: 99
+          unit_of_measurement: "%"
+          mode: slider
+    high_humidity:
+      name: Turn off above
+      default: 50
+      selector:
+        number:
+          min: 1
+          max: 99
+          unit_of_measurement: "%"
+          mode: slider
+    target_humidity:
+      name: Humidifier target humidity
+      description: Set to 0 to skip changing the humidifier target.
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 99
+          unit_of_measurement: "%"
+          mode: slider
+mode: single
+
+variables:
+  humidity_sensor: !input humidity_sensor
+  humidifier_entity: !input humidifier_entity
+  low_humidity: !input low_humidity
+  high_humidity: !input high_humidity
+  target_humidity: !input target_humidity
+
+triggers:
+  - trigger: numeric_state
+    entity_id: !input humidity_sensor
+    below: !input low_humidity
+  - trigger: numeric_state
+    entity_id: !input humidity_sensor
+    above: !input high_humidity
+  - trigger: time_pattern
+    minutes: "/5"
+  - trigger: homeassistant
+    event: start
+
+conditions: []
+
+actions:
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ states(humidity_sensor) | float(100) < low_humidity | float }}"
+        sequence:
+          - if:
+              - condition: template
+                value_template: "{{ target_humidity | float(0) > 0 }}"
+            then:
+              - action: humidifier.set_humidity
+                target:
+                  entity_id: !input humidifier_entity
+                data:
+                  humidity: "{{ target_humidity | int }}"
+          - action: humidifier.turn_on
+            target:
+              entity_id: !input humidifier_entity
+      - conditions:
+          - condition: template
+            value_template: "{{ states(humidity_sensor) | float(0) > high_humidity | float }}"
+        sequence:
+          - action: humidifier.turn_off
+            target:
+              entity_id: !input humidifier_entity
