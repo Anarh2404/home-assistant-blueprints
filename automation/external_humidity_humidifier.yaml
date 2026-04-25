@@ -1,5 +1,5 @@
 blueprint:
-  name: Humidifier controlled by external humidity sensor
+  name: Humidifier by external humidity sensor
   description: >
     Turns a humidifier on and off using an external humidity sensor with
     hysteresis. The tank sensor is intentionally not checked.
