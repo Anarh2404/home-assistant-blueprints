@@ -75,20 +75,30 @@ actions:
         sequence:
           - if:
               - condition: template
-                value_template: "{{ target_humidity | float(0) > 0 }}"
+                value_template: >
+                  {{ target_humidity | float(0) > 0 and
+                     state_attr(humidifier_entity, 'humidity') | int(0) != target_humidity | int }}
             then:
               - action: humidifier.set_humidity
                 target:
                   entity_id: !input humidifier_entity
                 data:
                   humidity: "{{ target_humidity | int }}"
-          - action: humidifier.turn_on
-            target:
-              entity_id: !input humidifier_entity
+          - if:
+              - condition: template
+                value_template: "{{ states(humidifier_entity) != 'on' }}"
+            then:
+              - action: humidifier.turn_on
+                target:
+                  entity_id: !input humidifier_entity
       - conditions:
           - condition: template
             value_template: "{{ states(humidity_sensor) | float(0) > high_humidity | float }}"
         sequence:
-          - action: humidifier.turn_off
-            target:
-              entity_id: !input humidifier_entity
+          - if:
+              - condition: template
+                value_template: "{{ states(humidifier_entity) not in ['off', 'unavailable', 'unknown'] }}"
+            then:
+              - action: humidifier.turn_off
+                target:
+                  entity_id: !input humidifier_entity
