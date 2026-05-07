@@ -2,7 +2,7 @@ blueprint:
   name: Humidifier by external humidity sensor
   description: >
     Turns a humidifier on and off using an external humidity sensor with
-    hysteresis. The tank sensor is intentionally not checked.
+    hysteresis. An optional tank-empty sensor can block turn-on commands.
   domain: automation
   input:
     humidity_sensor:
@@ -16,6 +16,13 @@ blueprint:
       selector:
         entity:
           domain: humidifier
+    tank_empty_sensor:
+      name: Tank empty sensor
+      description: Optional. If this binary sensor is on, turn-on commands are skipped.
+      default: ""
+      selector:
+        entity:
+          domain: binary_sensor
     low_humidity:
       name: Turn on below
       default: 40
@@ -52,6 +59,7 @@ variables:
   low_humidity: !input low_humidity
   high_humidity: !input high_humidity
   target_humidity: !input target_humidity
+  tank_empty_sensor: !input tank_empty_sensor
 
 triggers:
   - trigger: numeric_state
@@ -72,6 +80,9 @@ actions:
       - conditions:
           - condition: template
             value_template: "{{ states(humidity_sensor) | float(100) < low_humidity | float }}"
+          - condition: template
+            value_template: >
+              {{ tank_empty_sensor in [none, '', []] or not is_state(tank_empty_sensor, 'on') }}
         sequence:
           - if:
               - condition: template
